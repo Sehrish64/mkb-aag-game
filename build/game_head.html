@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MKB AAG GAME</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; background:#0b0e1a; overflow:hidden;
+    font-family:'Courier New',monospace; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #stage { position:relative; }
+  canvas { image-rendering:pixelated; image-rendering:crisp-edges; display:block; background:#000;
+    box-shadow:0 0 60px rgba(255,120,20,.25); border:4px solid #2a1a3a; }
+  /* ---------- HUD ---------- */
+  #hud { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:10px;
+    padding:8px 12px; background:linear-gradient(#000c,#0000); color:#fff; font-weight:bold;
+    font-size:15px; text-shadow:2px 2px 0 #000; pointer-events:none; z-index:5; }
+  #hud .rekha { display:flex; align-items:center; gap:6px; color:#ffd94a; }
+  #hud img.ric { width:22px; height:32px; object-fit:contain; }
+  #hud .lives { color:#ff5d7a; letter-spacing:2px; }
+  #hud .lvl { color:#7ddfff; }
+  #hud .time { margin-left:auto; color:#b7ff7d; }
+  #muteBtn { pointer-events:auto; margin-left:8px; background:#2a1a3a; color:#fff; border:2px solid #ffd94a;
+    border-radius:6px; font-size:15px; padding:2px 8px; cursor:pointer; font-family:inherit; }
+  /* ---------- Overlays ---------- */
+  .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(8,6,20,.88); z-index:10; color:#fff; text-align:center; padding:20px; }
+  .overlay.hidden { display:none; }
+  .title { font-size:52px; color:#ffd94a; text-shadow:3px 3px 0 #b34700, 6px 6px 0 #000;
+    letter-spacing:3px; margin-bottom:4px; animation:bob 2s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  .subtitle { color:#ff9a3d; font-size:18px; margin-bottom:14px; text-shadow:2px 2px 0 #000; }
+  #heroPreview { width:110px; image-rendering:pixelated; border:3px solid #ffd94a; border-radius:8px;
+    background:#1a1030; margin-bottom:14px; }
+  .btn { font-family:inherit; font-size:22px; font-weight:bold; background:linear-gradient(#ffcf4a,#ff9a3d);
+    color:#4a1600; border:3px solid #fff; border-radius:10px; padding:12px 42px; cursor:pointer;
+    text-shadow:1px 1px 0 #fff8; box-shadow:0 5px 0 #a34d00, 0 8px 16px #000a; margin:6px; }
+  .btn:active { transform:translateY(4px); box-shadow:0 1px 0 #a34d00; }
+  .btn.ghost { background:#2a1a3a; color:#ffd94a; box-shadow:0 5px 0 #000; font-size:17px; padding:9px 26px; }
+  .help { margin-top:14px; font-size:13px; color:#9db4ff; line-height:1.7; max-width:520px; }
+  .big { font-size:40px; margin-bottom:10px; text-shadow:3px 3px 0 #000; }
+  .stat { font-size:19px; color:#ffd94a; margin:6px 0; text-shadow:2px 2px 0 #000; }
+  /* ---------- Touch controls ---------- */
+  #touch { position:absolute; left:0; right:0; bottom:0; display:none; z-index:6;
+    justify-content:space-between; padding:0 14px 16px; pointer-events:none; }
+  #touch .grp { display:flex; gap:14px; pointer-events:auto; }
+  .tbtn { width:74px; height:74px; border-radius:50%; background:rgba(255,255,255,.14);
+    border:3px solid rgba(255,255,255,.5); color:#fff; font-size:30px; display:flex;
+    align-items:center; justify-content:center; font-family:inherit; }
+  .tbtn:active, .tbtn.on { background:rgba(255,180,60,.45); }
+  .tbtn.jump { width:88px; height:88px; border-color:#ffd94a; }
+  @media (pointer:coarse) { #touch { display:flex; } }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="game" width="960" height="540"></canvas>
+  <div id="hud">
+    <span class="rekha"><img class="ric" id="rekhaIcon" alt="R"> <span id="rekhaCount">0</span></span>
+    <span class="lives" id="lives">❤❤❤</span>
+    <span class="lvl" id="levelLabel">LV 1</span>
+    <span class="time" id="timer">0:00</span>
+    <button id="muteBtn" title="mute">🔊</button>
+  </div>
+  <div id="touch">
+    <div class="grp">
+      <button class="tbtn" id="tLeft">◀</button>
+      <button class="tbtn" id="tRight">▶</button>
+    </div>
+    <div class="grp">
+      <button class="tbtn jump" id="tJump">▲</button>
+    </div>
+  </div>
+  <div class="overlay" id="menuOv">
+    <div class="title">MKB AAG GAME</div>
+    <div class="subtitle">🔥 Jump the Aag &nbsp;•&nbsp; Collect all the Hanias 🔥</div>
+    <img id="heroPreview" alt="hero">
+    <button class="btn" id="playBtn">▶ PLAY</button>
+    <div class="help">⌨️ ← → / A D : run &nbsp;•&nbsp; SPACE / ↑ / W : jump (HOLD = higher!)<br>
+    🔥 Don't touch the fire! &nbsp;•&nbsp; 🚩 Flags = checkpoints &nbsp;•&nbsp; 🏁 Reach the goal!</div>
+  </div>
+  <div class="overlay hidden" id="levelOv">
+    <div class="big" id="levelTitle">Level Complete!</div>
+    <div class="stat" id="levelStats"></div>
+    <button class="btn" id="nextBtn">NEXT →</button>
+  </div>
+  <div class="overlay hidden" id="overOv">
+    <div class="big">💀 GAME OVER</div>
+    <div class="stat" id="overStats"></div>
+    <button class="btn" id="retryBtn">↻ RETRY</button>
+    <button class="btn ghost" id="menuBtn1">MENU</button>
+  </div>
+  <div class="overlay hidden" id="winOv">
+    <div class="big">🏆 YOU WIN!</div>
+    <div class="subtitle">All 3 levels cleared!</div>
+    <div class="stat" id="winStats"></div>
+    <button class="btn" id="againBtn">↻ PLAY AGAIN</button>
+    <button class="btn ghost" id="menuBtn2">MENU</button>
+  </div>
+</div></div>
+<script>
+"use strict";
+/* ============================================================
+   MKB AAG GAME — retro 2D platformer (single file)
+   Sections: CONFIG | AUDIO | INPUT | SPRITES | LEVELS |
+             PARTICLES | GAME | RENDER | UI | BOOT
+   To add a level: copy a level object in LEVELS, bump order.
+   To swap sounds: replace AudioSys methods (jump/collect/etc).
+   ============================================================ */
